@@ -2,7 +2,7 @@
 # Generate TypeScript types from Supabase schema
 set -euo pipefail
 
-OUT="src/types/database.types.ts"
+OUT="lib/types/database.types.ts"
 mkdir -p "$(dirname "$OUT")"
 
 if command -v supabase &>/dev/null; then

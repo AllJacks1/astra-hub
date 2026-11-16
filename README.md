@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Astra Team Hub
 
-## Getting Started
+Private, invite-only team communications app (Next.js + Supabase). See
+`ASTRA_TEAM_HUB_PROJECT_AND_BUILD.md`, `PRODUCT_POLICY.md` and `docs/` for the full spec.
 
-First, run the development server:
+## Status
+- Phase 1 foundation: code written, needs `npm install` + env + first run.
+- Phase 2 auth/invitations: code written, needs the security test report (`docs/PHASE_2_SECURITY_TESTS.md`).
+- Phases 3–6: not started.
 
+## Local setup
 ```bash
+npm install
+npm install @supabase/ssr @supabase/supabase-js resend server-only   # missing from package.json
+cp .env.example .env.local                                           # fill in values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Supabase
+1. Create a project (Astra-owned account). Auth > Providers: enable **Google**; add the Google OAuth client id/secret.
+2. Auth > URL configuration: Site URL = `NEXT_PUBLIC_APP_URL`; add redirect URL `<APP_URL>/auth/callback`.
+3. Apply migrations in order (`npx supabase db push`, or paste into the SQL editor):
+   - `20261113000000_baseline_phase1_to_4.sql`
+   - `20261116000001_security_hardening.sql`  ← **required**: fixes privilege escalation in the baseline
+4. Generate types (`scripts/generate-types.sh`) — `lib/types/database.types.ts` predates these migrations.
+5. Create the first admin: sign in once with Google (you'll be shown "not invited"), then
+   `ADMIN_EMAIL=you@astragroupph.com node scripts/bootstrap-admin.mjs`.
+6. Optional: `scripts/seed-mandatory-channel.sql` (Phase 3).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Google Cloud
+OAuth client (Web). Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`. Scopes: openid, email, profile.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Security notes
+- Never use `SUPABASE_SERVICE_ROLE_KEY` in client code; `lib/supabase/admin.ts` imports `server-only`.
+- Identity for every privileged RPC comes from `auth.uid()`, never from request parameters.

@@ -1,55 +1,47 @@
-/**
- * Example: src/app/auth/callback/route.ts
- * Adapt cookie handling to your @supabase/ssr version.
- */
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { hashInvitationToken } from "@/lib/invitation-token";
 import { safeInternalPath } from "@/lib/auth";
+import { publicEnv } from "@/lib/env";
 
-export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get("code");
-  const next = safeInternalPath(searchParams.get("next"));
-  const intent = searchParams.get("intent"); // e.g. "accept"
-  const token = searchParams.get("token"); // optional if passed through OAuth state
+const INVITE_COOKIE = "astra_invite";
 
-  if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=oauth`);
-  }
+export async function GET(request: NextRequest) {
+  const origin = publicEnv.appUrl();
+  const fail = (code: string) => NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(code)}`);
+
+  const code = request.nextUrl.searchParams.get("code");
+  const next = safeInternalPath(request.nextUrl.searchParams.get("next"));
+  if (!code) return fail("oauth");
+
+  const jar = await cookies();
+  const inviteToken = jar.get(INVITE_COOKIE)?.value;
+  jar.delete(INVITE_COOKIE); // single use, whatever happens next
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) {
-    return NextResponse.redirect(`${origin}/login?error=oauth`);
-  }
+  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+  if (exchangeError) return fail("oauth");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user?.email) {
-    return NextResponse.redirect(`${origin}/login?error=oauth`);
+    await supabase.auth.signOut();
+    return fail("oauth");
   }
 
-  // Invitation acceptance path
-  if (intent === "accept" && token) {
-    const tokenHash = hashInvitationToken(token);
-    const { data } = await supabase.rpc("astra_hub_accept_invitation", {
-      p_token_hash: tokenHash,
-      p_user_id: user.id,
-      p_user_email: user.email,
+  // Invitation acceptance. Identity + email are derived inside the RPC from the session.
+  if (inviteToken) {
+    const { data, error } = await supabase.rpc("astra_hub_accept_invitation", {
+      p_token_hash: hashInvitationToken(inviteToken),
     });
-
-    if (!data?.ok) {
+    if (!error && data?.ok) return NextResponse.redirect(`${origin}/dashboard`);
+    if (data?.error !== "already_active") {
       await supabase.auth.signOut();
-      return NextResponse.redirect(
-        `${origin}/login?error=${encodeURIComponent(data?.error ?? "invite_failed")}`
-      );
+      return fail(data?.error ?? "invite_failed");
     }
-    return NextResponse.redirect(`${origin}/dashboard`);
+    // already_active: fall through to normal sign-in
   }
 
-  // Normal sign-in: must already have an active profile
   const { data: profile } = await supabase
     .from("astra_hub_profiles")
     .select("status")
@@ -58,7 +50,7 @@ export async function GET(request: Request) {
 
   if (!profile || profile.status !== "active") {
     await supabase.auth.signOut();
-    return NextResponse.redirect(`${origin}/login?error=not_invited`);
+    return fail(profile?.status === "suspended" ? "suspended" : "not_invited");
   }
 
   return NextResponse.redirect(`${origin}${next}`);

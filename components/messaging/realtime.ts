@@ -5,7 +5,7 @@
  * Subscribe after the user is confirmed as a member of the channel/conversation.
  */
 import { useEffect } from "react";
-import { createBrowserClient } from "@/lib/supabase/client"; // your browser client
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
 
 type MessageRow = {
   id: string;
