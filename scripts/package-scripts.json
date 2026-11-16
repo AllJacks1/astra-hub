@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "db:types": "bash scripts/generate-types.sh",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset",
+    "check-env": "bash scripts/check-env.sh",
+    "setup": "bash scripts/setup.sh"
+  }
+}
