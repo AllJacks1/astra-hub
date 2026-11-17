@@ -11,5 +11,7 @@ export const serverEnv = {
   serviceRoleKey: () => need("SUPABASE_SERVICE_ROLE_KEY"),
   resendApiKey: () => need("RESEND_API_KEY"),
   resendFrom: () => need("RESEND_FROM_EMAIL"),
+  vapidPrivateKey: () => need("VAPID_PRIVATE_KEY"),
+  vapidSubject: () => need("VAPID_SUBJECT"),
   invitationTokenSecret: () => need("INVITATION_TOKEN_SECRET"),
 };

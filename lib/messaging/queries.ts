@@ -54,3 +54,13 @@ export async function getSidebarData(meId: string): Promise<SidebarData> {
 
   return { channels, conversations };
 }
+
+export async function getUnreadNotificationCount(meId: string): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("astra_hub_notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", meId)
+    .is("read_at", null);
+  return count ?? 0;
+}

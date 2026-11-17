@@ -24,6 +24,13 @@ const TEXT: Record<string, string> = {
   not_conversation_member: "You're not part of this conversation.",
   not_author: "You can only change your own messages.",
   edit_window_expired: "Messages can only be edited for 15 minutes.",
+  file_too_large: "A file is larger than 20 MB.",
+  mime_not_allowed: "That file type isn't allowed.",
+  extension_not_allowed: "That file type isn't allowed.",
+  attachment_limit_exceeded: "A message can have at most 10 files.",
+  attach_window_expired: "The upload took too long. Please send again.",
+  invalid_storage_path: "Upload failed. Please try again.",
+  object_not_found: "Upload failed. Please try again.",
   channel_not_found: "Channel not found.",
   user_not_active: "That user isn't active.",
 };

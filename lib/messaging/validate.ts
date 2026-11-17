@@ -15,7 +15,8 @@ export type ThreadMessage = {
   created_at: string;
   edited_at: string | null;
   sender: { id: string; full_name: string | null; email: string } | null;
+  attachments?: { id: string; original_file_name: string; mime_type: string; file_size: number }[];
 };
 
 export const MESSAGE_SELECT =
-  "id, channel_id, conversation_id, sender_id, body, created_at, edited_at, sender:astra_hub_profiles(id, full_name, email)";
+  "id, channel_id, conversation_id, sender_id, body, created_at, edited_at, sender:astra_hub_profiles(id, full_name, email), attachments:astra_hub_message_attachments(id, original_file_name, mime_type, file_size)";

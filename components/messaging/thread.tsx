@@ -1,23 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import {
-  deleteMessageAction,
-  editMessageAction,
-  markReadAction,
-  sendMessageAction,
-} from "@/components/messaging/actions";
+import { deleteMessageAction, editMessageAction, markReadAction } from "@/components/messaging/actions";
+import { signAttachmentsAction, signDownloadAction } from "@/components/messaging/attachments-actions";
+import { Composer } from "@/components/messaging/composer";
+import { MessageBody } from "@/components/messaging/message-body";
+import { AttachmentList } from "@/components/messaging/attachments-view";
+import { isImageMime } from "@/lib/file-allowlist";
 import { errorText } from "@/lib/messaging/errors";
-import {
-  EDIT_WINDOW_MS,
-  MAX_BODY,
-  MESSAGE_SELECT,
-  PAGE_SIZE,
-  type Target,
-  type ThreadMessage,
-} from "@/lib/messaging/validate";
+import { EDIT_WINDOW_MS, MAX_BODY, MESSAGE_SELECT, PAGE_SIZE, type Target, type ThreadMessage } from "@/lib/messaging/validate";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -37,19 +30,21 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
   const [supabase] = useState(() => createClient());
   const [messages, setMessages] = useState<ThreadMessage[]>(initial);
   const [hasMore, setHasMore] = useState(initialHasMore);
-  const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [online, setOnline] = useState<string[]>([]);
   const [typing, setTyping] = useState<Record<string, number>>({});
+  const [urls, setUrls] = useState<Record<string, { url: string; exp: number }>>({});
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef(true);
   const lastTypingSent = useRef(0);
+  const signing = useRef(false);
+  const attempts = useRef<Record<string, number>>({});
   const parentColumn = target.kind === "channel" ? "channel_id" : "conversation_id";
+  const names = useMemo(() => Object.values(participants), [participants]);
 
   const upsert = useCallback((m: ThreadMessage) => {
     setMessages((prev) => {
@@ -117,7 +112,7 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
   useEffect(() => {
     const el = listRef.current;
     if (el && stickRef.current) el.scrollTop = el.scrollHeight;
-  }, [messages.length]);
+  }, [messages.length, urls]);
 
   // Mark read on open and when someone else's message lands.
   const lastOtherId = [...messages].reverse().find((m) => m.sender_id !== me.id)?.id;
@@ -125,6 +120,36 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
     void markReadAction(target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target.kind, target.id, lastOtherId]);
+
+  // Batch-sign image previews (short-lived URLs; re-signed on expiry or load error).
+  useEffect(() => {
+    if (signing.current) return;
+    const now = Date.now();
+    const need = messages
+      .flatMap((m) => m.attachments ?? [])
+      .filter((a) => isImageMime(a.mime_type))
+      .map((a) => a.id)
+      .filter((id) => !(urls[id] && urls[id].exp > now + 15_000) && (attempts.current[id] ?? 0) < 3);
+    if (!need.length) return;
+    need.forEach((id) => (attempts.current[id] = (attempts.current[id] ?? 0) + 1));
+    signing.current = true;
+    signAttachmentsAction(need.slice(0, 50))
+      .then((res) => {
+        if (!res.ok) return;
+        const exp = Date.now() + (res.expiresIn - 10) * 1000;
+        setUrls((prev) => ({
+          ...prev,
+          ...Object.fromEntries(Object.entries(res.urls).map(([id, url]) => [id, { url, exp }])),
+        }));
+      })
+      .finally(() => { signing.current = false; });
+  }, [messages, urls]);
+
+  async function download(id: string) {
+    const res = await signDownloadAction(id);
+    if (!res.ok) return setError("Couldn't open that file.");
+    window.location.assign(res.url);
+  }
 
   async function loadOlder() {
     const oldest = messages[0];
@@ -147,23 +172,9 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
     });
   }
 
-  async function send() {
-    const body = draft.trim();
-    if (!body || sending) return;
-    setSending(true);
-    setError(null);
-    const res = await sendMessageAction(target, body);
-    setSending(false);
-    if (!res.ok) return setError(errorText(res.error));
-    setDraft("");
-    stickRef.current = true;
-    if (res.messageId) void syncMessage(res.messageId);
-  }
-
-  function onInput(value: string) {
-    setDraft(value);
+  function onTyping() {
     const now = Date.now();
-    if (value && now - lastTypingSent.current > 2000) {
+    if (now - lastTypingSent.current > 2000) {
       lastTypingSent.current = now;
       void channelRef.current?.send({ type: "broadcast", event: "typing", payload: { user_id: me.id } });
     }
@@ -212,7 +223,7 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
           {messages.map((m, i) => {
             const mine = m.sender_id === me.id;
             const showDay = i === 0 || day(messages[i - 1].created_at) !== day(m.created_at);
-            const canEdit = mine && Date.now() - new Date(m.created_at).getTime() < EDIT_WINDOW_MS;
+            const canEdit = mine && !!m.body && Date.now() - new Date(m.created_at).getTime() < EDIT_WINDOW_MS;
             const name = m.sender?.full_name || m.sender?.email?.split("@")[0] || participants[m.sender_id] || "Someone";
             return (
               <li key={m.id}>
@@ -252,8 +263,14 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
                       </div>
                     </div>
                   ) : (
-                    <p className="whitespace-pre-wrap break-words text-sm">{m.body}</p>
+                    m.body && <MessageBody text={m.body} names={names} />
                   )}
+                  <AttachmentList
+                    attachments={m.attachments ?? []}
+                    urls={urls}
+                    onImageError={(id) => setUrls((p) => ({ ...p, [id]: { url: "", exp: 0 } }))}
+                    onDownload={download}
+                  />
                 </div>
               </li>
             );
@@ -266,24 +283,16 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
           {typingNames.length > 0 && `${typingNames.join(", ")} ${typingNames.length > 1 ? "are" : "is"} typing…`}
         </div>
         {error && <p role="alert" className="pb-1 text-sm text-destructive">{error}</p>}
-        <div className="flex items-end gap-2">
-          <textarea
-            value={draft}
-            onChange={(e) => onInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void send();
-              }
-            }}
-            maxLength={MAX_BODY}
-            rows={1}
-            placeholder="Write a message"
-            aria-label="Message"
-            className="max-h-40 min-h-9 flex-1 resize-none rounded-md border bg-background px-3 py-2 text-sm"
-          />
-          <Button onClick={send} disabled={sending || !draft.trim()}>Send</Button>
-        </div>
+        <Composer
+          target={target}
+          me={me}
+          participants={participants}
+          onTyping={onTyping}
+          onSent={(id) => {
+            stickRef.current = true;
+            void syncMessage(id);
+          }}
+        />
       </div>
     </div>
   );

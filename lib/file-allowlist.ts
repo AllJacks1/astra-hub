@@ -43,3 +43,17 @@ export function randomStorageName(originalName: string): string {
   const safeExt = /^\.[a-z0-9]{1,8}$/.test(ext) ? ext : "";
   return `${crypto.randomUUID()}${safeExt}`;
 }
+
+/** Passed to <input accept>. Listing exact types makes iOS convert HEIC photos to JPEG. */
+export const ACCEPT_ATTR = [
+  "image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf",
+  ".docx", ".xlsx", ".pptx", ".txt", ".csv", "video/mp4",
+].join(",");
+
+export const isImageMime = (m: string) => /^image\/(jpeg|png|webp|gif)$/.test(m);
+
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}

@@ -1,9 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
+import { deliverNotifications } from "@/lib/notifications/deliver";
 import { isUuid, type Target } from "@/lib/messaging/validate";
 
 type Result = { ok: true; messageId?: string } | { ok: false; error: string };
@@ -14,17 +16,64 @@ function parentParams(t: Target) {
     : { p_channel_id: null, p_conversation_id: t.id };
 }
 
-export async function sendMessageAction(target: Target, body: string): Promise<Result> {
-  await requireProfile();
+export async function sendMessageAction(
+  target: Target,
+  body: string,
+  opts: { mentionIds?: string[]; hasAttachments?: boolean } = {},
+): Promise<Result> {
+  const me = await requireProfile();
   if (!isUuid(target?.id) || (target.kind !== "channel" && target.kind !== "conversation"))
     return { ok: false, error: "invalid_input" };
+  const text = String(body ?? "").trim();
   const supabase = await createClient();
+
   const { data, error } = await supabase.rpc("astra_hub_send_message", {
     ...parentParams(target),
-    p_body: String(body ?? ""),
+    p_body: text,
+    p_expect_attachments: Boolean(opts.hasAttachments),
   });
   if (error || !data?.ok) return { ok: false, error: data?.error ?? "send_failed" };
-  return { ok: true, messageId: data.message_id as string };
+  const messageId = data.message_id as string;
+
+  // In-app notifications (DM/group participants, or validated channel mentions only).
+  try {
+    const senderName = me.full_name || me.email.split("@")[0];
+    const preview = text ? text.slice(0, 140) : "Sent an attachment";
+    let title = senderName;
+    let mentionIds: string[] | null = null;
+
+    if (target.kind === "channel") {
+      // Keep only ids that are really @-mentioned in the text (names resolved server-side via RLS).
+      const wanted = (opts.mentionIds ?? []).filter(isUuid).slice(0, 10);
+      if (wanted.length && text) {
+        const { data: people } = await supabase
+          .from("astra_hub_profiles").select("id, full_name, email").in("id", wanted);
+        mentionIds = (people ?? [])
+          .filter((p) => text.includes(`@${p.full_name || p.email.split("@")[0]}`))
+          .map((p) => p.id as string);
+      }
+      if (mentionIds?.length) {
+        const { data: ch } = await supabase.from("astra_hub_channels").select("name").eq("id", target.id).maybeSingle();
+        title = `${senderName} mentioned you in #${ch?.name ?? "a channel"}`;
+      }
+    }
+
+    if (target.kind === "conversation" || mentionIds?.length) {
+      await supabase.rpc("astra_hub_notify_message_recipients", {
+        p_message_id: messageId,
+        p_title: title,
+        p_body_preview: preview,
+        p_mention_user_ids: mentionIds,
+      });
+      after(async () => {
+        try { await deliverNotifications(messageId); } catch (e) { console.error("[notify] deliver failed", e); }
+      });
+    }
+  } catch (e) {
+    console.error("[notify] failed", e); // never fail the send because of an alert
+  }
+
+  return { ok: true, messageId };
 }
 
 export async function editMessageAction(messageId: string, body: string): Promise<Result> {
