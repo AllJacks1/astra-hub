@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { publicEnv } from "@/lib/env";
-import { INVITE_COOKIE } from "./constants";
+
+export const INVITE_COOKIE = "astra_invite";
 
 /** Starts Google OAuth. An invitation token (if any) rides in an httpOnly cookie, not the URL. */
 export async function signInWithGoogle(formData: FormData) {

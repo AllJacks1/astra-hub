@@ -1,1 +1,0 @@
-export const INVITE_COOKIE = "astra_invite";

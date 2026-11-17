@@ -9,6 +9,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Link href="/dashboard" className="font-semibold tracking-tight">Astra Team Hub</Link>
         <span className="text-muted-foreground">Admin</span>
         <Link href="/admin/invitations" className="underline-offset-4 hover:underline">Invitations</Link>
+        <Link href="/admin/channels" className="underline-offset-4 hover:underline">Channels</Link>
       </header>
       <div className="flex-1">{children}</div>
     </div>
