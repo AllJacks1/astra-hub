@@ -103,7 +103,8 @@ export async function markReadAction(target: Target): Promise<void> {
   const supabase = await createClient();
   if (target.kind === "channel") await supabase.rpc("astra_hub_mark_channel_read", { p_channel_id: target.id });
   else await supabase.rpc("astra_hub_mark_conversation_read", { p_conversation_id: target.id });
-  revalidatePath("/", "layout"); // refresh sidebar unread badges
+  // No revalidatePath here: the client clears the badge locally (useMarkSpaceRead), so a
+  // read no longer re-renders the whole layout and re-downloads the sidebar.
 }
 
 export async function joinChannelAction(formData: FormData) {

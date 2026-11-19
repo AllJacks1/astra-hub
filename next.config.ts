@@ -5,7 +5,9 @@ const nextConfig: NextConfig = {
   experimental: {
     agentFeedback: true,
   },
-  cacheComponents: true,
+  // Off: every route is per-user and reads auth cookies, nothing uses "use cache", so
+  // prerendering a static shell can't succeed (it failed the build on /accept-invitation).
+  cacheComponents: false,
   async headers() {
     return [
       {
@@ -17,7 +19,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  partialPrefetching: true,
   turbopack: {
     rules: {
       "*.css": {

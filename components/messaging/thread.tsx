@@ -12,6 +12,7 @@ import { isImageMime } from "@/lib/file-allowlist";
 import { errorText } from "@/lib/messaging/errors";
 import { EDIT_WINDOW_MS, MAX_BODY, MESSAGE_SELECT, PAGE_SIZE, type Target, type ThreadMessage } from "@/lib/messaging/validate";
 import { Button } from "@/components/ui/button";
+import { useMarkSpaceRead } from "@/components/layout/live-signals";
 
 type Props = {
   target: Target;
@@ -63,6 +64,23 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
     [supabase, upsert],
   );
 
+  // A message with N attachments emits N+1 change signals in quick succession; coalesce them
+  // into one fetch per message instead of N+1 round trips.
+  const syncTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const scheduleSync = useCallback(
+    (id: string) => {
+      const timers = syncTimers.current;
+      const prev = timers.get(id);
+      if (prev) clearTimeout(prev);
+      timers.set(id, setTimeout(() => { timers.delete(id); void syncMessage(id); }, 400));
+    },
+    [syncMessage],
+  );
+  useEffect(() => {
+    const timers = syncTimers.current;
+    return () => { timers.forEach(clearTimeout); timers.clear(); };
+  }, []);
+
   // Realtime: private topic, membership enforced by RLS on realtime.messages.
   useEffect(() => {
     let cancelled = false;
@@ -77,8 +95,8 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
       channelRef.current = channel;
       channel
         // Payloads are only signals. Content always comes from an RLS-checked fetch.
-        .on("broadcast", { event: "message_insert" }, ({ payload }) => payload?.id && void syncMessage(String(payload.id)))
-        .on("broadcast", { event: "message_update" }, ({ payload }) => payload?.id && void syncMessage(String(payload.id)))
+        .on("broadcast", { event: "message_insert" }, ({ payload }) => payload?.id && scheduleSync(String(payload.id)))
+        .on("broadcast", { event: "message_update" }, ({ payload }) => payload?.id && scheduleSync(String(payload.id)))
         .on("broadcast", { event: "typing" }, ({ payload }) => {
           const uid = String(payload?.user_id ?? "");
           if (uid && uid !== me.id && participants[uid]) setTyping((t) => ({ ...t, [uid]: Date.now() + 3500 }));
@@ -94,7 +112,14 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
       channelRef.current = null;
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [supabase, target.kind, target.id, me.id, participants, syncMessage]);
+  }, [supabase, target.kind, target.id, me.id, participants, scheduleSync]);
+
+  // Clock for the 15-minute edit window (render must stay pure; refreshed every 30 s).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   // Expire typing indicators.
   useEffect(() => {
@@ -116,7 +141,9 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
 
   // Mark read on open and when someone else's message lands.
   const lastOtherId = [...messages].reverse().find((m) => m.sender_id !== me.id)?.id;
+  const markSpaceRead = useMarkSpaceRead();
   useEffect(() => {
+    markSpaceRead(target.kind, target.id);
     void markReadAction(target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target.kind, target.id, lastOtherId]);
@@ -223,7 +250,7 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
           {messages.map((m, i) => {
             const mine = m.sender_id === me.id;
             const showDay = i === 0 || day(messages[i - 1].created_at) !== day(m.created_at);
-            const canEdit = mine && !!m.body && Date.now() - new Date(m.created_at).getTime() < EDIT_WINDOW_MS;
+            const canEdit = mine && !!m.body && now - new Date(m.created_at).getTime() < EDIT_WINDOW_MS;
             const name = m.sender?.full_name || m.sender?.email?.split("@")[0] || participants[m.sender_id] || "Someone";
             return (
               <li key={m.id}>
@@ -290,7 +317,7 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
           onTyping={onTyping}
           onSent={(id) => {
             stickRef.current = true;
-            void syncMessage(id);
+            scheduleSync(id);
           }}
         />
       </div>

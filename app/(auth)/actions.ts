@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { publicEnv } from "@/lib/env";
 
-export const INVITE_COOKIE = "astra_invite";
+// Not exported: a "use server" file may only export async functions (it broke the build).
+const INVITE_COOKIE = "astra_invite";
 
 /** Starts Google OAuth. An invitation token (if any) rides in an httpOnly cookie, not the URL. */
 export async function signInWithGoogle(formData: FormData) {

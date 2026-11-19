@@ -6,6 +6,7 @@ import { deleteMessageAction, sendMessageAction } from "@/components/messaging/a
 import { registerAttachmentAction } from "@/components/messaging/attachments-actions";
 import { ACCEPT_ATTR, MAX_FILES_PER_MESSAGE, formatBytes, isAllowedFile, randomStorageName } from "@/lib/file-allowlist";
 import { errorText } from "@/lib/messaging/errors";
+import { compressImage } from "@/lib/image-compress";
 import { MAX_BODY, type Target } from "@/lib/messaging/validate";
 import { Button } from "@/components/ui/button";
 
@@ -65,19 +66,29 @@ export function Composer({ target, me, participants, onSent, onTyping }: Props) 
     });
   }
 
-  function addFiles(list: FileList | null) {
+  async function addFiles(list: FileList | null) {
     if (!list) return;
+    const picked = Array.from(list);
+    if (fileRef.current) fileRef.current.value = "";
     const next = [...files];
     const problems: string[] = [];
-    for (const f of Array.from(list)) {
-      if (next.length >= MAX_FILES_PER_MESSAGE) { problems.push(`Max ${MAX_FILES_PER_MESSAGE} files per message.`); break; }
-      const check = isAllowedFile(f);
-      if (!check.ok) problems.push(`${f.name}: ${errorText(check.error)}`);
-      else next.push(f);
+    setBusy(true);
+    setStatus(picked.some((f) => f.type.startsWith("image/")) ? "Preparing photos…" : null);
+    try {
+      for (const original of picked) {
+        if (next.length >= MAX_FILES_PER_MESSAGE) { problems.push(`Max ${MAX_FILES_PER_MESSAGE} files per message.`); break; }
+        // Shrink photos first (saves data for sender and readers), then validate the result.
+        const f = await compressImage(original);
+        const check = isAllowedFile(f);
+        if (!check.ok) problems.push(`${original.name}: ${errorText(check.error)}`);
+        else next.push(f);
+      }
+    } finally {
+      setFiles(next);
+      setError(problems.length ? problems.join(" ") : null);
+      setStatus(null);
+      setBusy(false);
     }
-    setFiles(next);
-    setError(problems.length ? problems.join(" ") : null);
-    if (fileRef.current) fileRef.current.value = "";
   }
 
   async function uploadOne(file: File, messageId: string): Promise<boolean> {
@@ -159,7 +170,7 @@ export function Composer({ target, me, participants, onSent, onTyping }: Props) 
       {error && <p role="alert" className="pb-1 text-sm text-destructive">{error}</p>}
 
       <div className="flex items-end gap-2">
-        <input ref={fileRef} type="file" multiple accept={ACCEPT_ATTR} hidden onChange={(e) => addFiles(e.target.files)} />
+        <input ref={fileRef} type="file" multiple accept={ACCEPT_ATTR} hidden onChange={(e) => void addFiles(e.target.files)} />
         <Button type="button" variant="outline" aria-label="Attach files" disabled={busy} onClick={() => fileRef.current?.click()}>📎</Button>
         <textarea
           ref={taRef}

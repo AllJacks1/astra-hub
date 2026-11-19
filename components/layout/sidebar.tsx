@@ -1,15 +1,7 @@
 import Link from "next/link";
 import type { SidebarData } from "@/lib/messaging/queries";
 import type { Role } from "@/lib/auth";
-
-function Badge({ n }: { n: number }) {
-  if (!n) return null;
-  return (
-    <span className="ml-auto rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
-      {n > 99 ? "99+" : n}
-    </span>
-  );
-}
+import { UnreadBadge } from "@/components/layout/live-signals";
 
 export function Sidebar({ data, role }: { data: SidebarData; role: Role }) {
   const row = "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted";
@@ -21,7 +13,7 @@ export function Sidebar({ data, role }: { data: SidebarData; role: Role }) {
           <Link key={c.id} href={`/channels/${c.id}`} className={row}>
             <span aria-hidden>{c.visibility === "private" ? "🔒" : "#"}</span>
             <span className="truncate">{c.name}</span>
-            <Badge n={c.unread} />
+            <UnreadBadge kind="channel" id={c.id} />
           </Link>
         ))}
         {!data.channels.length && <p className="px-2 text-sm text-muted-foreground">No channels yet.</p>}
@@ -35,7 +27,7 @@ export function Sidebar({ data, role }: { data: SidebarData; role: Role }) {
         {data.conversations.map((c) => (
           <Link key={c.id} href={`/messages/${c.id}`} className={row}>
             <span className="truncate">{c.title}</span>
-            <Badge n={c.unread} />
+            <UnreadBadge kind="conversation" id={c.id} />
           </Link>
         ))}
         {!data.conversations.length && <p className="px-2 text-sm text-muted-foreground">No messages yet.</p>}
