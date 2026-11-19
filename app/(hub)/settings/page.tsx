@@ -2,7 +2,9 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { setEmailNotificationsAction } from "./actions";
 import { PushToggle } from "@/components/settings/push-toggle";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { signOut } from "../actions";
 
 export default async function SettingsPage() {
   const profile = await requireProfile();
@@ -34,6 +36,18 @@ export default async function SettingsPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold tracking-tight">Push notifications</h2>
         <PushToggle />
+      </section>
+
+      <section className="space-y-3 border-t pt-6">
+        <h2 className="text-lg font-semibold tracking-tight">Account</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          {profile.role === "admin" && (
+            <Link href="/admin/invitations" className={buttonVariants({ variant: "outline" })}>Admin tools</Link>
+          )}
+          <form action={signOut}>
+            <Button type="submit" variant="outline">Sign out</Button>
+          </form>
+        </div>
       </section>
     </main>
   );

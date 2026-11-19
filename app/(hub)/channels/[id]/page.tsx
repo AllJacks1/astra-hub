@@ -7,6 +7,7 @@ import { errorText } from "@/lib/messaging/errors";
 import { joinChannelAction, leaveChannelAction } from "@/components/messaging/actions";
 import { Thread } from "@/components/messaging/thread";
 import { Button } from "@/components/ui/button";
+import { BackToChats } from "@/components/layout/mobile-nav";
 
 export default async function ChannelPage({
   params,
@@ -67,9 +68,10 @@ export default async function ChannelPage({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3">
-        <div className="min-w-0">
-          <h1 className="font-semibold">{channel.visibility === "private" ? "🔒" : "#"} {channel.name}</h1>
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2 md:py-3">
+        <BackToChats />
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate font-semibold">{channel.visibility === "private" ? "🔒" : "#"} {channel.name}</h1>
           {channel.description && <p className="truncate text-sm text-muted-foreground">{channel.description}</p>}
           <p className="text-xs text-muted-foreground">{Object.keys(participants).length} members</p>
         </div>

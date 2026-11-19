@@ -118,6 +118,7 @@ function useUnread(): Ctx {
 }
 
 export const useMarkSpaceRead = () => useUnread().markRead;
+export const useUnreadNotifications = () => useUnread().counts.notifications;
 
 export function UnreadBadge({ kind, id }: { kind: Kind; id: string }) {
   const n = useUnread().counts[bucket(kind)][id] ?? 0;

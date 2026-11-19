@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { conversationTitle, personName } from "@/lib/messaging/queries";
 import { isUuid, MESSAGE_SELECT, PAGE_SIZE, type ThreadMessage } from "@/lib/messaging/validate";
 import { Thread } from "@/components/messaging/thread";
+import { BackToChats } from "@/components/layout/mobile-nav";
 
 export default async function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -33,11 +34,14 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
 
   return (
     <div className="flex h-full flex-col">
-      <header className="shrink-0 border-b px-4 py-3">
-        <h1 className="font-semibold">{conversationTitle(convo, profile.id)}</h1>
-        <p className="text-xs text-muted-foreground">
-          {convo.type === "group" ? `Group · ${Object.keys(participants).length} people (fixed)` : "Direct message"}
-        </p>
+      <header className="flex shrink-0 items-center gap-3 border-b px-4 py-2 md:py-3">
+        <BackToChats />
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate font-semibold">{conversationTitle(convo, profile.id)}</h1>
+          <p className="text-xs text-muted-foreground">
+            {convo.type === "group" ? `Group · ${Object.keys(participants).length} people (fixed)` : "Direct message"}
+          </p>
+        </div>
       </header>
       <div className="min-h-0 flex-1">
         <Thread

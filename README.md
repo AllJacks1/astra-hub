@@ -8,7 +8,9 @@ Private, invite-only team communications app (Next.js + Supabase). See
 - Phase 2 auth/invitations: code written, needs the security test report (`docs/PHASE_2_SECURITY_TESTS.md`).
 - Phase 3 channels/DMs/realtime: code written, needs `docs/PHASE_3_SECURITY_TESTS.md` gate.
 - Phase 4 attachments/notifications/email/push: code written, needs `docs/PHASE_4_SECURITY_TESTS.md` gate.
-- Phases 5–6: PWA/QA and deploy not yet built.
+- Phase 5 PWA basics: manifest, icons (placeholder artwork: replace `scripts/icon-source.svg` and re-render
+  `public/icons/*.png`), offline page, service worker registration, phone tab bar. Device QA not done.
+- Phase 6: deploy not yet built.
 
 ## Local setup
 ```bash
@@ -22,7 +24,9 @@ npm run dev
 ## Supabase
 1. Create a project (Astra-owned account). Auth > Providers: enable **Google**; add the Google OAuth client id/secret.
 2. Auth > URL configuration: Site URL = `NEXT_PUBLIC_APP_URL`; add redirect URL `<APP_URL>/auth/callback`.
-3. Apply migrations in order (`npx supabase db push`, or paste into the SQL editor):
+3. Apply the database. Easiest: paste all of `supabase/astra_hub_full_setup.sql` into the SQL Editor and Run
+   (one transaction, safe to re-run; it is the migrations below plus the announcements seed, concatenated in order).
+   Or apply migrations in order (`npx supabase db push`, or paste each into the SQL editor):
    - `20261113000000_baseline_phase1_to_4.sql`
    - `20261116000001_security_hardening.sql`  ← **required**: fixes privilege escalation in the baseline
    - `20261117000001_phase3_hardening_and_realtime.sql`  ← Phase 3: private realtime, DM rules, mandatory-channel auto-join

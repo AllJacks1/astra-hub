@@ -305,7 +305,7 @@ export function Thread({ target, me, participants, initial, initialHasMore }: Pr
         </ul>
       </div>
 
-      <div className="shrink-0 border-t p-3">
+      <div className="shrink-0 border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="h-4 text-xs text-muted-foreground" aria-live="polite">
           {typingNames.length > 0 && `${typingNames.join(", ")} ${typingNames.length > 1 ? "are" : "is"} typing…`}
         </div>

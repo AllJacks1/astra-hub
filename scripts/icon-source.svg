@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Placeholder Astra Team Hub mark. Replace with approved artwork, then re-render the PNGs in public/icons. -->
+  <rect width="512" height="512" fill="#171717"/>
+  <path fill="#fafafa" fill-rule="evenodd" d="M256 128 L372 392 H324 L299 332 H213 L188 392 H140 Z M229 292 H283 L256 226 Z"/>
+  <path fill="#fafafa" d="M372 116 L380 140 L404 148 L380 156 L372 180 L364 156 L340 148 L364 140 Z"/>
+</svg>
