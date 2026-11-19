@@ -23,22 +23,25 @@ export default async function HubLayout({ children }: { children: React.ReactNod
     <LiveSignals userId={profile.id} initial={initialCounts}>
     <div className="flex h-dvh flex-col">
       <AppHeader>
-        <Link href="/dashboard" className="font-semibold tracking-tight">Astra Team Hub</Link>
+        <Link href="/dashboard" className="flex items-center gap-2 font-semibold tracking-tight">
+          <span aria-hidden className="flex size-8 items-center justify-center rounded-xl text-sm font-bold text-white" style={{ background: "var(--bubble-mine)" }}>A</span>
+          Astra Team Hub
+        </Link>
         {/* Phones use the bottom tab bar; Admin and Sign out live in Settings there. */}
         <nav className="hidden items-center gap-3 text-sm md:flex">
           {profile.role === "admin" && (
-            <Link href="/admin/invitations" className="underline-offset-4 hover:underline">Admin</Link>
+            <Link href="/admin/invitations" className="rounded-full px-3 py-1.5 hover:bg-muted">Admin</Link>
           )}
           <AlertsLink />
-          <Link href="/settings" className="underline-offset-4 hover:underline">Settings</Link>
+          <Link href="/settings" className="rounded-full px-3 py-1.5 hover:bg-muted">Settings</Link>
           <span className="text-muted-foreground">{profile.full_name ?? profile.email}</span>
           <form action={signOut}>
-            <Button type="submit" variant="outline" size="sm">Sign out</Button>
+            <Button type="submit" variant="outline" size="sm" className="rounded-full">Sign out</Button>
           </form>
         </nav>
       </AppHeader>
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-64 shrink-0 overflow-y-auto border-r md:block">
+        <aside className="hidden w-72 shrink-0 overflow-y-auto border-r bg-sidebar md:block">
           <Sidebar data={side} role={profile.role} />
         </aside>
         <div className="min-w-0 flex-1 overflow-y-auto">{children}</div>

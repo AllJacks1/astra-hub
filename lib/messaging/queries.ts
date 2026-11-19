@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type SidebarData = {
@@ -18,7 +19,8 @@ export function conversationTitle(c: any, meId: string): string {
   return others.length ? others.join(", ") : "Conversation";
 }
 
-export async function getSidebarData(meId: string): Promise<SidebarData> {
+/** Cached per request: the layout and the dashboard both need it. */
+export const getSidebarData = cache(async (meId: string): Promise<SidebarData> => {
   const supabase = await createClient();
   const [ch, cv, un] = await Promise.all([
     supabase
@@ -53,7 +55,7 @@ export async function getSidebarData(meId: string): Promise<SidebarData> {
     .map((c) => ({ id: c.id, type: c.type, title: conversationTitle(c, meId), unread: unread.conversations[c.id] ?? 0 }));
 
   return { channels, conversations };
-}
+});
 
 export async function getUnreadNotificationCount(meId: string): Promise<number> {
   const supabase = await createClient();

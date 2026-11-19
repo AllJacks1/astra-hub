@@ -124,7 +124,7 @@ export function UnreadBadge({ kind, id }: { kind: Kind; id: string }) {
   const n = useUnread().counts[bucket(kind)][id] ?? 0;
   if (!n) return null;
   return (
-    <span className="ml-auto rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
+    <span className="ml-auto min-w-5 shrink-0 rounded-full bg-primary px-1.5 text-center text-[11px] leading-5 font-semibold text-primary-foreground">
       {n > 99 ? "99+" : n}
     </span>
   );
@@ -133,7 +133,7 @@ export function UnreadBadge({ kind, id }: { kind: Kind; id: string }) {
 export function AlertsLink() {
   const n = useUnread().counts.notifications;
   return (
-    <Link href="/notifications" className="relative underline-offset-4 hover:underline" aria-label={`Notifications${n ? `, ${n} unread` : ""}`}>
+    <Link href="/notifications" className="relative rounded-full px-3 py-1.5 hover:bg-muted" aria-label={`Notifications${n ? `, ${n} unread` : ""}`}>
       Alerts
       {n > 0 && (
         <span className="ml-1 rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">{n > 99 ? "99+" : n}</span>

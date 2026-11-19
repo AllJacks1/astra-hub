@@ -37,7 +37,7 @@ export function MobileTabBar({ role }: { role: Role }) {
               aria-label={badge ? `${label}, ${badge} unread` : label}
               className={cn(
                 "relative flex flex-col items-center gap-0.5 py-2 text-[11px]",
-                active ? "font-medium text-foreground" : "text-muted-foreground",
+                active ? "font-semibold text-primary" : "text-muted-foreground",
               )}
             >
               <Icon className="size-5" aria-hidden strokeWidth={active ? 2.25 : 1.75} />
@@ -61,7 +61,7 @@ export function AppHeader({ children }: { children: React.ReactNode }) {
   return (
     <header
       className={cn(
-        "shrink-0 items-center justify-between border-b px-4 py-3",
+        "shrink-0 items-center justify-between border-b px-4 py-2.5",
         isThread(pathname) ? "hidden md:flex" : "flex",
       )}
     >
@@ -76,7 +76,7 @@ export function BackToChats() {
     <Link
       href="/dashboard"
       aria-label="Back to chats"
-      className="-ml-2 flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-muted md:hidden"
+      className="-ml-1 flex size-9 shrink-0 items-center justify-center rounded-full text-primary hover:bg-muted md:hidden"
     >
       <ChevronLeft className="size-5" aria-hidden />
     </Link>

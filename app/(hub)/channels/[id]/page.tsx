@@ -8,6 +8,7 @@ import { joinChannelAction, leaveChannelAction } from "@/components/messaging/ac
 import { Thread } from "@/components/messaging/thread";
 import { Button } from "@/components/ui/button";
 import { BackToChats } from "@/components/layout/mobile-nav";
+import { Hash, Lock } from "lucide-react";
 
 export default async function ChannelPage({
   params,
@@ -68,17 +69,21 @@ export default async function ChannelPage({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2 md:py-3">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-3 py-2 backdrop-blur md:px-4 md:py-2.5">
         <BackToChats />
+        <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          {channel.visibility === "private" ? <Lock className="size-5" /> : <Hash className="size-5" />}
+        </span>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-semibold">{channel.visibility === "private" ? "🔒" : "#"} {channel.name}</h1>
-          {channel.description && <p className="truncate text-sm text-muted-foreground">{channel.description}</p>}
-          <p className="text-xs text-muted-foreground">{Object.keys(participants).length} members</p>
+          <h1 className="truncate font-semibold leading-tight">{channel.name}</h1>
+          <p className="truncate text-xs text-muted-foreground">
+            {Object.keys(participants).length} members{channel.description ? ` · ${channel.description}` : ""}
+          </p>
         </div>
         {!channel.is_mandatory && (
           <form action={leaveChannelAction}>
             <input type="hidden" name="channelId" value={id} />
-            <Button type="submit" variant="outline" size="sm">Leave</Button>
+            <Button type="submit" variant="ghost" size="sm" className="rounded-full text-muted-foreground">Leave</Button>
           </form>
         )}
       </header>

@@ -5,6 +5,7 @@ import { conversationTitle, personName } from "@/lib/messaging/queries";
 import { isUuid, MESSAGE_SELECT, PAGE_SIZE, type ThreadMessage } from "@/lib/messaging/validate";
 import { Thread } from "@/components/messaging/thread";
 import { BackToChats } from "@/components/layout/mobile-nav";
+import { Avatar } from "@/components/ui/avatar";
 
 export default async function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,10 +35,11 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex shrink-0 items-center gap-3 border-b px-4 py-2 md:py-3">
+      <header className="flex shrink-0 items-center gap-3 border-b bg-background/95 px-3 py-2 backdrop-blur md:px-4 md:py-2.5">
         <BackToChats />
+        <Avatar name={conversationTitle(convo, profile.id)} seed={id} className="size-10" />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-semibold">{conversationTitle(convo, profile.id)}</h1>
+          <h1 className="truncate font-semibold leading-tight">{conversationTitle(convo, profile.id)}</h1>
           <p className="text-xs text-muted-foreground">
             {convo.type === "group" ? `Group · ${Object.keys(participants).length} people (fixed)` : "Direct message"}
           </p>

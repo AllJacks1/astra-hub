@@ -1,18 +1,22 @@
 "use client";
 
+import { FileText, Film } from "lucide-react";
 import { formatBytes, isImageMime } from "@/lib/file-allowlist";
 import type { ThreadMessage } from "@/lib/messaging/validate";
+import { cn } from "@/lib/utils";
 
 type Attachment = NonNullable<ThreadMessage["attachments"]>[number];
 
 export function AttachmentList({
   attachments,
   urls,
+  mine,
   onImageError,
   onDownload,
 }: {
   attachments: Attachment[];
   urls: Record<string, { url: string; exp: number }>;
+  mine?: boolean;
   onImageError: (id: string) => void;
   onDownload: (id: string) => void;
 }) {
@@ -21,9 +25,9 @@ export function AttachmentList({
   const files = attachments.filter((a) => !isImageMime(a.mime_type));
 
   return (
-    <div className="mt-1 space-y-2">
+    <div className={cn("flex flex-col gap-1", mine ? "items-end" : "items-start")}>
       {images.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className={cn("flex flex-wrap gap-1", mine && "justify-end")}>
           {images.map((a) => {
             const u = urls[a.id];
             return u?.url ? (
@@ -34,14 +38,13 @@ export function AttachmentList({
                 src={u.url}
                 alt={a.original_file_name}
                 loading="lazy"
+                decoding="async"
                 onError={() => onImageError(a.id)}
                 onClick={() => onDownload(a.id)}
-                className="max-h-56 max-w-full cursor-pointer rounded-md border object-cover"
+                className="max-h-64 max-w-[min(18rem,100%)] cursor-zoom-in rounded-2xl border object-cover transition-opacity hover:opacity-90"
               />
             ) : (
-              <div key={a.id} className="flex h-24 w-32 items-center justify-center rounded-md border text-xs text-muted-foreground">
-                Loading…
-              </div>
+              <div key={a.id} className="h-40 w-56 animate-pulse rounded-2xl bg-muted" aria-label="Loading image" />
             );
           })}
         </div>
@@ -51,11 +54,20 @@ export function AttachmentList({
           key={a.id}
           type="button"
           onClick={() => onDownload(a.id)}
-          className="flex w-full max-w-sm items-center gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-muted"
+          className={cn(
+            "flex w-72 max-w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm transition-colors",
+            mine
+              ? "bg-primary/10 text-foreground hover:bg-primary/15"
+              : "bg-bubble-other text-bubble-other-foreground hover:brightness-95",
+          )}
         >
-          <span aria-hidden>{a.mime_type.startsWith("video/") ? "🎞" : "📎"}</span>
-          <span className="min-w-0 flex-1 truncate">{a.original_file_name}</span>
-          <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(a.file_size)}</span>
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background/70 text-primary" aria-hidden>
+            {a.mime_type.startsWith("video/") ? <Film className="size-4" /> : <FileText className="size-4" />}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium">{a.original_file_name}</span>
+            <span className="block text-xs text-muted-foreground">{formatBytes(a.file_size)}</span>
+          </span>
         </button>
       ))}
     </div>
